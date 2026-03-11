@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.avc.infra.mapper.PresetMapper">
+
+    <select id="findByCategoryOrderByNameAsc" resultType="com.avc.infra.entity.PresetEntity">
+        SELECT * FROM presets WHERE category = #{category} ORDER BY name ASC
+    </select>
+
+    <select id="findAllOrdered" resultType="com.avc.infra.entity.PresetEntity">
+        SELECT * FROM presets ORDER BY builtin DESC, name ASC
+    </select>
+
+    <select id="findByBuiltinTrue" resultType="com.avc.infra.entity.PresetEntity">
+        SELECT * FROM presets WHERE builtin = true
+    </select>
+
+</mapper>

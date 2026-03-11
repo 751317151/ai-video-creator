@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<!--
+  批量视频生成页面
+  支持批量任务管理、队列查看、进度跟踪
+-->
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>批量生成 - AI 视频创作台</title>
+<style>
+:root {
+  --bg: #0f0f14;
+  --surface: #1a1a24;
+  --card: #20202c;
+  --border: #2a2a3a;
+  --accent: #ff3b5c;
+  --text: #f0f0f5;
+  --muted: #6a6a7a;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  padding: 2rem;
+  min-height: 100vh;
+}
+
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.header h1 {
+  font-size: 1.8rem;
+  font-weight: 700;
+}
+
+.batch-grid {
+  display: grid;
+  grid-template-columns: 400px 1fr;
+  gap: 2rem;
+}
+
+/* 左侧：批量输入 */
+.batch-input-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  height: fit-content;
+}
+
+.card-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+}
+
+.textarea-wrapper {
+  position: relative;
+}
+
+textarea {
+  width: 100%;
+  height: 300px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+  padding: 1rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+  resize: vertical;
+  line-height: 1.6;
+}
+
+textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.textarea-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 0.8rem;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.btn {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-primary {
+  background: linear-gradient(135deg, var(--accent), #ff6b35);
+  color: white;
+  width: 100%;
+}
+
+.btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(255,59,92,0.35);
+}
+
+.btn-secondary {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.btn-secondary:hover {
+  border-color: var(--accent);
+}
+
+/* 右侧：任务队列 */
+.queue-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+
+.queue-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.queue-stats {
+  display: flex;
+  gap: 2rem;
+  font-size: 0.9rem;
+}
+
+.queue-stats span {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.queue-stats .count {
+  background: var(--surface);
+  padding: 0.2rem 0.6rem;
+  border-radius: 100px;
+  font-weight: 600;
+}
+
+.task-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.task-item {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 1rem;
+  transition: all 0.2s;
+}
+
+.task-item:hover {
+  border-color: rgba(255,59,92,0.3);
+}
+
+.task-info h4 {
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-bottom: 0.4rem;
+}
+
+.task-meta {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.task-status {
+  display: flex;
+  flex-direction: column;
+  align-items: end;
+  gap: 0.5rem;
+}
+
+.status-badge {
+  padding: 0.25rem 0.7rem;
+  border-radius: 100px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.status-badge.pending {
+  background: rgba(250,204,21,0.15);
+  color: #facc15;
+}
+
+.status-badge.processing {
+  background: rgba(59,130,246,0.15);
+  color: #3b82f6;
+}
+
+.status-badge.completed {
+  background: rgba(34,197,94,0.15);
+  color: #22c55e;
+}
+
+.status-badge.failed {
+  background: rgba(255,59,92,0.15);
+  color: var(--accent);
+}
+
+.progress-mini {
+  width: 100px;
+  height: 4px;
+  background: var(--border);
+  border-radius: 100px;
+  overflow: hidden;
+}
+
+.progress-mini-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  transition: width 0.3s;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 3rem;
+  color: var(--muted);
+}
+
+.empty-state .icon {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+/* 快速模板 */
+.quick-templates {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border);
+}
+
+.template-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--muted);
+  margin-bottom: 0.8rem;
+}
+
+.template-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.template-chip {
+  padding: 0.4rem 0.8rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 100px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.template-chip:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <div>
+      <h1>📦 批量视频生成</h1>
+      <p style="color: var(--muted); margin-top: 0.5rem;">一次性创建多个视频，自动排队处理</p>
+    </div>
+    <button class="btn btn-secondary" onclick="exportReport()">
+      📊 导出报告
+    </button>
+  </div>
+
+  <div class="batch-grid">
+    <!-- 左侧输入 -->
+    <div class="batch-input-card">
+      <div class="card-title">📝 批量主题输入</div>
+
+      <div class="textarea-wrapper">
+        <textarea id="batchTopics" placeholder="每行输入一个主题，例如：&#10;为什么猫咪喜欢盒子&#10;黑洞到底有多大&#10;量子纠缠是什么&#10;世界上最深的海沟"></textarea>
+        <div class="textarea-footer">
+          <span id="topicCount">0 个主题</span>
+          <button class="btn btn-secondary" style="padding: 0.4rem 0.8rem; font-size: 0.8rem;" onclick="clearTopics()">
+            清空
+          </button>
+        </div>
+      </div>
+
+      <div style="margin-top: 1.5rem;">
+        <label style="display: block; margin-bottom: 0.5rem; font-size: 0.9rem;">视频风格</label>
+        <select id="batchVideoType" style="width: 100%; padding: 0.7rem; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; color: var(--text);">
+          <option value="knowledge">🧠 知识科普</option>
+          <option value="news">📰 新闻速报</option>
+          <option value="story">📖 故事朗读</option>
+          <option value="product">🛍️ 产品推广</option>
+        </select>
+      </div>
+
+      <div style="margin-top: 1.5rem;">
+        <label style="display: block; margin-bottom: 0.5rem; font-size: 0.9rem;">并发任务数</label>
+        <input type="range" id="concurrency" min="1" max="5" value="2" style="width: 100%;">
+        <div style="display: flex; justify-content: space-between; font-size: 0.8rem; color: var(--muted); margin-top: 0.3rem;">
+          <span>1</span>
+          <span id="concurrencyValue">2</span>
+          <span>5</span>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" style="margin-top: 1.5rem;" onclick="startBatch()">
+        🚀 开始批量生成
+      </button>
+
+      <div class="quick-templates">
+        <div class="template-title">📋 快速模板</div>
+        <div class="template-chips">
+          <span class="template-chip" onclick="applyTemplate('science')">科普系列</span>
+          <span class="template-chip" onclick="applyTemplate('history')">历史故事</span>
+          <span class="template-chip" onclick="applyTemplate('tech')">科技前沿</span>
+          <span class="template-chip" onclick="applyTemplate('life')">生活技巧</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 右侧队列 -->
+    <div class="queue-card">
+      <div class="queue-header">
+        <div class="card-title" style="margin: 0;">📋 任务队列</div>
+        <div class="queue-stats">
+          <span>📊 总计: <span class="count" id="totalCount">0</span></span>
+          <span>⏳ 处理中: <span class="count" id="processingCount">0</span></span>
+          <span>✅ 完成: <span class="count" id="completedCount">0</span></span>
+          <span>❌ 失败: <span class="count" id="failedCount">0</span></span>
+        </div>
+      </div>
+
+      <div class="task-list" id="taskList">
+        <div class="empty-state">
+          <div class="icon">📦</div>
+          <div>暂无任务，在左侧添加主题开始批量生成</div>
+        </div>
+      </div>
+
+      <div style="margin-top: 1rem; display: flex; gap: 0.8rem;">
+        <button class="btn btn-secondary" style="flex: 1;" onclick="pauseAll()" id="pauseBtn">
+          ⏸ 暂停全部
+        </button>
+        <button class="btn btn-secondary" style="flex: 1;" onclick="clearCompleted()">
+          🗑️ 清除已完成
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let tasks = [];
+
+// API key for authentication
+const AVC_API_KEY = localStorage.getItem('avc_api_key') || 'blackstar';
+function apiFetch(url, options = {}) {
+  const headers = options.headers instanceof Headers
+    ? options.headers
+    : new Headers(options.headers || {});
+  headers.set('X-API-Key', AVC_API_KEY);
+  return fetch(url, { ...options, headers });
+}
+
+let isPaused = false;
+
+// 主题计数
+document.getElementById('batchTopics').addEventListener('input', function() {
+  const lines = this.value.trim().split('\n').filter(l => l.trim());
+  document.getElementById('topicCount').textContent = lines.length + ' 个主题';
+});
+
+// 并发滑块
+document.getElementById('concurrency').addEventListener('input', function() {
+  document.getElementById('concurrencyValue').textContent = this.value;
+});
+
+// 应用模板
+function applyTemplate(type) {
+  const templates = {
+    science: [
+      '为什么天空是蓝色的',
+      '黑洞到底有多大',
+      '量子纠缠是什么',
+      '为什么星星会眨眼',
+      '什么是暗物质'
+    ],
+    history: [
+      '秦始皇统一六国的故事',
+      '长城的建造历史',
+      '丝绸之路的起源',
+      '三国演义真实历史',
+      '唐朝的盛世辉煌'
+    ],
+    tech: [
+      'AI是如何学习的',
+      '5G技术的应用',
+      '虚拟现实的发展',
+      '区块链技术原理解析',
+      '自动驾驶汽车工作原理'
+    ],
+    life: [
+      '如何提高睡眠质量',
+      '高效学习技巧',
+      '健康饮食习惯',
+      '时间管理方法',
+      '减压放松技巧'
+    ]
+  };
+
+  document.getElementById('batchTopics').value = templates[type].join('\n');
+  document.getElementById('batchTopics').dispatchEvent(new Event('input'));
+}
+
+// 清空主题
+function clearTopics() {
+  document.getElementById('batchTopics').value = '';
+  document.getElementById('batchTopics').dispatchEvent(new Event('input'));
+}
+
+// 开始批量生成
+async function startBatch() {
+  const topics = document.getElementById('batchTopics').value.trim().split('\n').filter(l => l.trim());
+  if (topics.length === 0) {
+    alert('请输入至少一个主题');
+    return;
+  }
+
+  const videoType = document.getElementById('batchVideoType').value;
+  const concurrency = parseInt(document.getElementById('concurrency').value);
+
+  // 创建任务
+  for (const topic of topics) {
+    tasks.push({
+      id: Date.now() + Math.random(),
+      topic: topic,
+      videoType: videoType,
+      status: 'pending',
+      progress: 0,
+      createdAt: new Date()
+    });
+  }
+
+  renderTasks();
+  updateStats();
+
+  // 开始处理
+  processQueue(concurrency);
+}
+
+// 处理队列
+async function processQueue(concurrency) {
+  const pendingTasks = tasks.filter(t => t.status === 'pending');
+  const processingTasks = tasks.filter(t => t.status === 'processing');
+
+  const availableSlots = concurrency - processingTasks.length;
+
+  if (availableSlots > 0 && pendingTasks.length > 0 && !isPaused) {
+    for (let i = 0; i < Math.min(availableSlots, pendingTasks.length); i++) {
+      const task = pendingTasks[i];
+      await processTask(task);
+    }
+  }
+}
+
+// 处理单个任务
+async function processTask(task) {
+  task.status = 'processing';
+  task.startedAt = new Date();
+  renderTasks();
+  updateStats();
+
+  try {
+    const batchPayload = {
+      topic: task.topic,
+      video_type: task.videoType,
+    };
+
+    const response = await apiFetch('/api/videos/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(batchPayload),
+    });
+
+    const data = await response.json();
+
+    if (data.error) {
+      throw new Error(data.error);
+    }
+
+    task.jobId = data.data ? data.data.id : data.job_id;
+
+    // 监听进度
+    monitorTask(task);
+
+  } catch (error) {
+    task.status = 'failed';
+    task.error = error.message;
+    task.completedAt = new Date();
+    renderTasks();
+    updateStats();
+
+    // 继续处理队列
+    setTimeout(() => processQueue(parseInt(document.getElementById('concurrency').value)), 1000);
+  }
+}
+
+// 监听任务进度
+function monitorTask(task) {
+  const wsUrl = `ws://${location.host}/ws/${task.jobId}`;
+  const ws = new WebSocket(wsUrl);
+
+  ws.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+
+    if (data.percent !== undefined) {
+      task.progress = data.percent;
+    }
+
+    if (data.type === 'done' || data.status === 'done') {
+      task.status = 'completed';
+      task.completedAt = new Date();
+      task.result = data;
+      ws.close();
+
+      renderTasks();
+      updateStats();
+
+      // 继续处理队列
+      setTimeout(() => processQueue(parseInt(document.getElementById('concurrency').value)), 500);
+    }
+
+    if (data.type === 'error' || data.status === 'error') {
+      task.status = 'failed';
+      task.error = data.error;
+      task.completedAt = new Date();
+      ws.close();
+
+      renderTasks();
+      updateStats();
+
+      // 继续处理队列
+      setTimeout(() => processQueue(parseInt(document.getElementById('concurrency').value)), 1000);
+    }
+
+    renderTasks();
+  };
+
+  ws.onerror = () => {
+    // 轮询模式
+    pollTask(task);
+  };
+}
+
+// 轮询任务
+async function pollTask(task) {
+  const interval = setInterval(async () => {
+    try {
+      const response = await apiFetch(`/api/videos/${task.jobId}`);
+      const data = await response.json();
+
+      task.progress = data.progress || 0;
+
+      if (data.status === 'done') {
+        task.status = 'completed';
+        task.completedAt = new Date();
+        clearInterval(interval);
+
+        renderTasks();
+        updateStats();
+
+        setTimeout(() => processQueue(parseInt(document.getElementById('concurrency').value)), 500);
+      } else if (data.status === 'error') {
+        task.status = 'failed';
+        task.error = data.error;
+        task.completedAt = new Date();
+        clearInterval(interval);
+
+        renderTasks();
+        updateStats();
+
+        setTimeout(() => processQueue(parseInt(document.getElementById('concurrency').value)), 1000);
+      }
+
+      renderTasks();
+    } catch (e) {
+      console.error('Polling error:', e);
+    }
+  }, 2000);
+}
+
+// 渲染任务列表
+function renderTasks() {
+  const container = document.getElementById('taskList');
+
+  if (tasks.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state">
+        <div class="icon">📦</div>
+        <div>暂无任务，在左侧添加主题开始批量生成</div>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = tasks.map(task => {
+    const statusClass = {
+      'pending': 'pending',
+      'processing': 'processing',
+      'completed': 'completed',
+      'failed': 'failed'
+    }[task.status];
+
+    const statusText = {
+      'pending': '⏳ 等待中',
+      'processing': '🔄 处理中',
+      'completed': '✅ 已完成',
+      'failed': '❌ 失败'
+    }[task.status];
+
+    return `
+      <div class="task-item">
+        <div class="task-info">
+          <h4>${task.topic}</h4>
+          <div class="task-meta">
+            <span>${task.videoType === 'knowledge' ? '🧠' : task.videoType === 'news' ? '📰' : '📖'}</span>
+            <span>${new Date(task.createdAt).toLocaleTimeString()}</span>
+            ${task.completedAt ? `<span>耗时: ${Math.round((task.completedAt - task.startedAt) / 1000)}s</span>` : ''}
+          </div>
+          ${task.error ? `<div style="color: var(--accent); font-size: 0.8rem; margin-top: 0.4rem;">${task.error}</div>` : ''}
+        </div>
+        <div class="task-status">
+          <span class="status-badge ${statusClass}">${statusText}</span>
+          ${task.status === 'processing' ? `
+            <div class="progress-mini">
+              <div class="progress-mini-fill" style="width: ${task.progress}%"></div>
+            </div>
+            <div style="font-size: 0.75rem; color: var(--muted);">${task.progress}%</div>
+          ` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// 更新统计
+function updateStats() {
+  document.getElementById('totalCount').textContent = tasks.length;
+  document.getElementById('processingCount').textContent = tasks.filter(t => t.status === 'processing').length;
+  document.getElementById('completedCount').textContent = tasks.filter(t => t.status === 'completed').length;
+  document.getElementById('failedCount').textContent = tasks.filter(t => t.status === 'failed').length;
+}
+
+// 暂停全部
+function pauseAll() {
+  isPaused = !isPaused;
+  const btn = document.getElementById('pauseBtn');
+  btn.textContent = isPaused ? '▶️ 继续处理' : '⏸ 暂停全部';
+}
+
+// 清除已完成
+function clearCompleted() {
+  tasks = tasks.filter(t => t.status !== 'completed');
+  renderTasks();
+  updateStats();
+}
+
+// 导出报告
+function exportReport() {
+  const report = {
+    generated: new Date().toISOString(),
+    summary: {
+      total: tasks.length,
+      completed: tasks.filter(t => t.status === 'completed').length,
+      failed: tasks.filter(t => t.status === 'failed').length,
+      processing: tasks.filter(t => t.status === 'processing').length,
+      pending: tasks.filter(t => t.status === 'pending').length
+    },
+    tasks: tasks.map(t => ({
+      topic: t.topic,
+      status: t.status,
+      createdAt: t.createdAt,
+      startedAt: t.startedAt,
+      completedAt: t.completedAt,
+      duration: t.completedAt && t.startedAt ? (new Date(t.completedAt) - new Date(t.startedAt)) / 1000 : null,
+      error: t.error
+    }))
+  };
+
+  const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `batch-report-${Date.now()}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+</script>
+</body>
+</html>

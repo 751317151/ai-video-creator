@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.avc.infra.mapper.JobMapper">
+
+    <select id="selectPageOrdered" resultType="com.avc.infra.entity.JobEntity">
+        SELECT * FROM jobs ORDER BY created_at DESC
+    </select>
+
+    <select id="selectByStatus" resultType="com.avc.infra.entity.JobEntity">
+        SELECT * FROM jobs WHERE status = #{status} ORDER BY created_at DESC
+    </select>
+
+    <select id="countByStatus" resultType="long">
+        SELECT COUNT(*) FROM jobs WHERE status = #{status}
+    </select>
+
+</mapper>

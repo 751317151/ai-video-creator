@@ -1,0 +1,10 @@
+[project]
+name = "avc-python-worker"
+version = "2.0.0"
+description = "AI Video Creator - Lean MQ Worker for video processing"
+requires-python = ">=3.10"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+asyncio_mode = "auto"

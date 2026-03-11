@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.avc.infra.mapper.VideoStatisticMapper">
+
+    <select id="findByJobId" resultType="com.avc.infra.entity.VideoStatisticEntity">
+        SELECT * FROM video_statistics WHERE job_id = #{jobId}
+    </select>
+
+    <select id="selectPageOrdered" resultType="com.avc.infra.entity.VideoStatisticEntity">
+        SELECT * FROM video_statistics ORDER BY created_at DESC
+    </select>
+
+    <select id="countSince" resultType="long">
+        SELECT COUNT(*) FROM video_statistics WHERE created_at >= #{since}
+    </select>
+
+    <select id="totalViews" resultType="long">
+        SELECT COALESCE(SUM(view_count), 0) FROM video_statistics
+    </select>
+
+    <select id="totalLikes" resultType="long">
+        SELECT COALESCE(SUM(like_count), 0) FROM video_statistics
+    </select>
+
+    <select id="avgDuration" resultType="double">
+        SELECT COALESCE(AVG(duration_seconds), 0) FROM video_statistics
+    </select>
+
+    <select id="avgGenerationTimeMs" resultType="double">
+        SELECT COALESCE(AVG(generation_time_ms), 0) FROM video_statistics
+    </select>
+
+    <select id="countByVideoType" resultType="java.util.Map">
+        SELECT video_type AS videoType, COUNT(*) AS cnt FROM video_statistics GROUP BY video_type ORDER BY cnt DESC
+    </select>
+
+    <select id="countByPlatform" resultType="java.util.Map">
+        SELECT platform, COUNT(*) AS cnt FROM video_statistics WHERE platform IS NOT NULL GROUP BY platform ORDER BY cnt DESC
+    </select>
+
+    <select id="dailyCountSince" resultType="java.util.Map">
+        SELECT CAST(created_at AS DATE) AS day, COUNT(*) AS cnt FROM video_statistics WHERE created_at >= #{since} GROUP BY CAST(created_at AS DATE) ORDER BY day
+    </select>
+
+    <select id="avgFileSize" resultType="double">
+        SELECT COALESCE(AVG(file_size_bytes), 0) FROM video_statistics
+    </select>
+
+    <select id="totalShares" resultType="long">
+        SELECT COALESCE(SUM(share_count), 0) FROM video_statistics
+    </select>
+
+</mapper>

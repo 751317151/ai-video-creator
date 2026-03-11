@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<!--
+  性能监控仪表板
+  显示实时性能指标、任务队列状态、历史统计
+-->
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>性能监控 - AI 视频创作台</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+:root {
+  --bg: #0f0f14;
+  --surface: #1a1a24;
+  --card: #20202c;
+  --border: #2a2a3a;
+  --accent: #ff3b5c;
+  --accent2: #00f2ea;
+  --text: #f0f0f5;
+  --muted: #6a6a7a;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Inter', sans-serif;
+  min-height: 100vh;
+  padding: 2rem;
+}
+
+/* 顶部统计卡片 */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+.stat-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  position: relative;
+  overflow: hidden;
+}
+.stat-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+}
+.stat-label {
+  font-size: 0.82rem;
+  color: var(--muted);
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+}
+.stat-value {
+  font-size: 2rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.stat-change {
+  font-size: 0.8rem;
+  margin-top: 0.5rem;
+}
+.stat-change.positive { color: #22c55e; }
+.stat-change.negative { color: var(--accent); }
+
+/* 图表区域 */
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+.chart-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.5rem;
+}
+.chart-title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+}
+
+/* 实时指标表格 */
+.metrics-table {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.table-header {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
+  padding: 1rem 1.5rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+.table-row {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.9rem;
+  transition: background 0.2s;
+}
+.table-row:hover { background: var(--surface); }
+.table-row:last-child { border-bottom: none; }
+
+/* 状态指示器 */
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 100px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+.status-badge.active {
+  background: rgba(34,197,94,0.15);
+  color: #22c55e;
+}
+.status-badge.error {
+  background: rgba(255,59,92,0.15);
+  color: var(--accent);
+}
+
+/* 进度条 */
+.metric-bar {
+  height: 4px;
+  background: var(--surface);
+  border-radius: 100px;
+  overflow: hidden;
+  margin-top: 0.5rem;
+}
+.metric-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent), var(--accent2));
+  border-radius: 100px;
+  transition: width 0.5s ease;
+}
+</style>
+</head>
+<body>
+
+<!-- 统计卡片 -->
+<div class="stats-grid">
+  <div class="stat-card">
+    <div class="stat-label">今日视频生成</div>
+    <div class="stat-value" id="todayVideos">0</div>
+    <div class="stat-change positive">↑ 12% vs 昨天</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">平均处理时间</div>
+    <div class="stat-value" id="avgTime">0s</div>
+    <div class="stat-change negative">↑ 5% vs 上周</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">成功率</div>
+    <div class="stat-value" id="successRate">0%</div>
+    <div class="stat-change positive">↑ 2.3%</div>
+  </div>
+  <div class="stat-card">
+    <div class="stat-label">活跃任务</div>
+    <div class="stat-value" id="activeJobs">0</div>
+    <div class="stat-change">实时更新</div>
+  </div>
+</div>
+
+<!-- 图表 -->
+<div class="charts-grid">
+  <div class="chart-card">
+    <div class="chart-title">📊 视频生成趋势 (7天)</div>
+    <canvas id="trendChart" height="200"></canvas>
+  </div>
+  <div class="chart-card">
+    <div class="chart-title">⏱️ 各阶段平均耗时</div>
+    <canvas id="timingChart" height="200"></canvas>
+  </div>
+</div>
+
+<!-- 性能指标表格 -->
+<div class="chart-card">
+  <div class="chart-title">📈 Pipeline 性能指标</div>
+  <div class="metrics-table">
+    <div class="table-header">
+      <span>阶段</span>
+      <span>平均耗时</span>
+      <span>最短</span>
+      <span>最长</span>
+      <span>成功率</span>
+    </div>
+    <div id="metricsRows"></div>
+  </div>
+</div>
+
+<script>
+// API key for authentication
+const AVC_API_KEY = localStorage.getItem('avc_api_key') || 'blackstar';
+function apiFetch(url, options = {}) {
+  const headers = options.headers instanceof Headers
+    ? options.headers
+    : new Headers(options.headers || {});
+  headers.set('X-API-Key', AVC_API_KEY);
+  return fetch(url, { ...options, headers });
+}
+
+// 初始化图表
+const trendCtx = document.getElementById('trendChart').getContext('2d');
+const timingCtx = document.getElementById('timingChart').getContext('2d');
+
+new Chart(trendCtx, {
+  type: 'line',
+  data: {
+    labels: ['周一', '周二', '周三', '周四', '周五', '周六', '周日'],
+    datasets: [{
+      label: '生成数量',
+      data: [12, 19, 15, 25, 22, 30, 28],
+      borderColor: '#ff3b5c',
+      backgroundColor: 'rgba(255,59,92,0.1)',
+      fill: true,
+      tension: 0.4
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      y: {
+        beginAtZero: true,
+        grid: { color: '#2a2a3a' },
+        ticks: { color: '#6a6a7a' }
+      },
+      x: {
+        grid: { display: false },
+        ticks: { color: '#6a6a7a' }
+      }
+    }
+  }
+});
+
+new Chart(timingCtx, {
+  type: 'bar',
+  data: {
+    labels: ['文案生成', 'TTS合成', '视频合成', '平台上传'],
+    datasets: [{
+      label: '耗时 (秒)',
+      data: [5.2, 12.8, 45.6, 8.3],
+      backgroundColor: [
+        'rgba(255,59,92,0.8)',
+        'rgba(0,242,234,0.8)',
+        'rgba(251,114,153,0.8)',
+        'rgba(34,197,94,0.8)'
+      ],
+      borderRadius: 6
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: { legend: { display: false } },
+    scales: {
+      y: {
+        beginAtZero: true,
+        grid: { color: '#2a2a3a' },
+        ticks: { color: '#6a6a7a' }
+      },
+      x: {
+        grid: { display: false },
+        ticks: { color: '#6a6a7a' }
+      }
+    }
+  }
+});
+
+// 加载实时指标
+async function loadMetrics() {
+  const resp = await apiFetch('/api/metrics');
+  const data = await resp.json();
+
+  // 更新统计卡片
+  document.getElementById('avgTime').textContent =
+    ((data.timings['pipeline.total_duration']?.avg || 0) / 1000).toFixed(1) + 's';
+
+  const success = data.counters['pipeline.total_executions@success=True'] || 0;
+  const total = success + (data.counters['pipeline.total_executions@success=False'] || 0);
+  document.getElementById('successRate').textContent =
+    total > 0 ? Math.round(success / total * 100) + '%' : '0%';
+
+  document.getElementById('activeJobs').textContent = data.active_operations || 0;
+
+  // 更新指标表格
+  const stages = [
+    { key: 'pipeline.script_generation', name: '📝 文案生成' },
+    { key: 'pipeline.tts_synthesis', name: '🎙️ TTS合成' },
+    { key: 'pipeline.video_composition', name: '🎬 视频合成' },
+    { key: 'pipeline.upload_douyin', name: '🔴 抖音上传' },
+    { key: 'pipeline.upload_bilibili', name: '🌸 B站上传' }
+  ];
+
+  const rowsHtml = stages.map(stage => {
+    const metrics = data.timings[stage.key];
+    if (!metrics) return '';
+
+    const successKey = stage.key.replace('.', '_') + '_success';
+    const successCount = data.counters[successKey] || 0;
+    const totalCount = metrics.count || 1;
+    const successRate = Math.round(successCount / totalCount * 100);
+
+    return `
+      <div class="table-row">
+        <span>${stage.name}</span>
+        <span>${(metrics.avg / 1000).toFixed(1)}s</span>
+        <span>${(metrics.min / 1000).toFixed(1)}s</span>
+        <span>${(metrics.max / 1000).toFixed(1)}s</span>
+        <span><span class="status-badge ${successRate > 90 ? 'active' : 'error'}">${successRate}%</span></span>
+      </div>
+      <div class="metric-bar">
+        <div class="metric-fill" style="width: ${successRate}%"></div>
+      </div>
+    `;
+  }).join('');
+
+  document.getElementById('metricsRows').innerHTML = rowsHtml;
+}
+
+// 定时刷新
+loadMetrics();
+setInterval(loadMetrics, 5000);
+</script>
+</body>
+</html>

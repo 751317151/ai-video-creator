@@ -1,0 +1,20 @@
+spring:
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+
+  # Disable RocketMQ auto-configuration in tests
+  autoconfigure:
+    exclude:
+      - org.apache.rocketmq.spring.autoconfigure.RocketMQAutoConfiguration
+
+  ai:
+    openai:
+      api-key: test-key
+      base-url: http://localhost:0
+
+avc:
+  api-key: test-api-key-12345
+  rate-limit:
+    max-requests: 100
+    window-seconds: 60

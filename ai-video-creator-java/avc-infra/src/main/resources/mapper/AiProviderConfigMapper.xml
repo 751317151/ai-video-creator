@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.avc.infra.mapper.AiProviderConfigMapper">
+
+    <select id="findByProviderName" resultType="com.avc.infra.entity.AiProviderConfigEntity">
+        SELECT * FROM ai_provider_config WHERE provider_name = #{providerName}
+    </select>
+
+    <select id="findByEnabledTrue" resultType="com.avc.infra.entity.AiProviderConfigEntity">
+        SELECT * FROM ai_provider_config WHERE enabled = true
+    </select>
+
+</mapper>

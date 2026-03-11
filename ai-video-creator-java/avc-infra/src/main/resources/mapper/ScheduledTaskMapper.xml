@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.avc.infra.mapper.ScheduledTaskMapper">
+
+    <select id="findByStatusAndScheduledTimeBefore" resultType="com.avc.infra.entity.ScheduledTaskEntity">
+        SELECT * FROM scheduled_tasks WHERE status = #{status} AND scheduled_time &lt; #{time}
+    </select>
+
+    <select id="findByJobIdOrderByScheduledTimeAsc" resultType="com.avc.infra.entity.ScheduledTaskEntity">
+        SELECT * FROM scheduled_tasks WHERE job_id = #{jobId} ORDER BY scheduled_time ASC
+    </select>
+
+    <select id="findAllByOrderByScheduledTimeAsc" resultType="com.avc.infra.entity.ScheduledTaskEntity">
+        SELECT * FROM scheduled_tasks ORDER BY scheduled_time ASC
+    </select>
+
+</mapper>

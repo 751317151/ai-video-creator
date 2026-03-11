@@ -1,0 +1,124 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: avc-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: avc
+      POSTGRES_USER: avc
+      POSTGRES_PASSWORD: avc_dev_2024
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U avc -d avc"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  redis:
+    image: redis:7-alpine
+    container_name: avc-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  rocketmq-namesrv:
+    image: apache/rocketmq:5.1.4
+    container_name: avc-rocketmq-namesrv
+    ports:
+      - "9876:9876"
+    command: sh mqnamesrv
+    environment:
+      JAVA_OPT_EXT: "-server -Xms256m -Xmx256m"
+    healthcheck:
+      test: ["CMD-SHELL", "echo 'health check' | nc -w 2 localhost 9876 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  rocketmq-broker:
+    image: apache/rocketmq:5.1.4
+    container_name: avc-rocketmq-broker
+    ports:
+      - "10911:10911"
+    command: sh mqbroker -n rocketmq-namesrv:9876 --enable-autocreate-topic
+    depends_on:
+      rocketmq-namesrv:
+        condition: service_healthy
+    environment:
+      JAVA_OPT_EXT: "-server -Xms512m -Xmx512m"
+    healthcheck:
+      test: ["CMD-SHELL", "echo 'health check' | nc -w 2 localhost 10911 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  avc-java:
+    build:
+      context: ./ai-video-creator-java
+      dockerfile: Dockerfile
+    container_name: avc-java
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rocketmq-broker:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/avc
+      SPRING_DATASOURCE_USERNAME: avc
+      SPRING_DATASOURCE_PASSWORD: avc_dev_2024
+      SPRING_DATA_REDIS_HOST: redis
+      ROCKETMQ_NAME_SERVER: rocketmq-namesrv:9876
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: avc
+      DB_USER: avc
+      DB_PASSWORD: avc_dev_2024
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  avc-python-worker:
+    build:
+      context: ./ai-video-creator-python
+      dockerfile: Dockerfile
+    container_name: avc-python-worker
+    depends_on:
+      rocketmq-broker:
+        condition: service_healthy
+    environment:
+      ROCKETMQ_NAMESRV: rocketmq-namesrv:9876
+      HEALTH_PORT: "8081"
+    volumes:
+      - avc_output:/app/output
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8081/health || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  postgres_data:
+  redis_data:
+  avc_output:

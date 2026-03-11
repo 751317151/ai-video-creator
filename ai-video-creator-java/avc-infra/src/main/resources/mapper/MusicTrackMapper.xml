@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.avc.infra.mapper.MusicTrackMapper">
+
+    <select id="findByCategoryOrderByNameAsc" resultType="com.avc.infra.entity.MusicTrackEntity">
+        SELECT * FROM music_tracks WHERE category = #{category} ORDER BY name ASC
+    </select>
+
+    <select id="findByMoodOrderByUseCountDesc" resultType="com.avc.infra.entity.MusicTrackEntity">
+        SELECT * FROM music_tracks WHERE mood = #{mood} ORDER BY use_count DESC
+    </select>
+
+    <select id="findAllByOrderByUseCountDesc" resultType="com.avc.infra.entity.MusicTrackEntity">
+        SELECT * FROM music_tracks ORDER BY use_count DESC
+    </select>
+
+    <select id="findTop10ByOrderByUseCountDesc" resultType="com.avc.infra.entity.MusicTrackEntity">
+        SELECT * FROM music_tracks ORDER BY use_count DESC LIMIT 10
+    </select>
+
+</mapper>

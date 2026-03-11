@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.avc.infra.mapper.ScriptKnowledgeMapper">
+
+    <select id="findByJobId" resultType="com.avc.infra.entity.ScriptKnowledgeEntity">
+        SELECT * FROM script_knowledge WHERE job_id = #{jobId}
+    </select>
+
+    <select id="findByVideoTypeOrderByViewCountDesc" resultType="com.avc.infra.entity.ScriptKnowledgeEntity">
+        SELECT * FROM script_knowledge WHERE video_type = #{videoType} ORDER BY view_count DESC
+    </select>
+
+    <select id="countByVideoType" resultType="long">
+        SELECT COUNT(*) FROM script_knowledge WHERE video_type = #{videoType}
+    </select>
+
+</mapper>
