@@ -1,15 +1,20 @@
 package com.avc.ai.storyboard;
 
+import com.avc.ai.pexels.PexelsService;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 /**
- * Generates visual storyboards by using AI to create scene descriptions.
+ * Generates visual storyboards by using AI to create scene descriptions,
+ * then fetches preview images from Pexels.
  */
 @Slf4j
 @Service
@@ -17,6 +22,8 @@ import java.util.Map;
 public class StoryboardService {
 
     private final ChatClient chatClient;
+    private final PexelsService pexelsService;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public List<Map<String, Object>> generate(String topic, String scriptJson, int sceneCount) {
         String prompt = """
@@ -43,9 +50,21 @@ public class StoryboardService {
         String response = chatClient.prompt().user(prompt).call().content();
 
         try {
-            com.fasterxml.jackson.databind.ObjectMapper om = new com.fasterxml.jackson.databind.ObjectMapper();
             String cleaned = response.replaceAll("```json\\s*", "").replaceAll("```\\s*", "").trim();
-            return om.readValue(cleaned, new com.fasterxml.jackson.core.type.TypeReference<>() {});
+            List<Map<String, Object>> scenes = objectMapper.readValue(cleaned, new TypeReference<>() {});
+
+            if (pexelsService.isAvailable()) {
+                for (int i = 0; i < scenes.size(); i++) {
+                    Map<String, Object> scene = scenes.get(i);
+                    String query = (String) scene.get("searchQuery");
+                    Map<String, Object> enriched = new HashMap<>(scene);
+                    pexelsService.searchPhoto(query)
+                            .ifPresent(url -> enriched.put("imageUrl", url));
+                    scenes.set(i, enriched);
+                }
+            }
+
+            return scenes;
         } catch (Exception e) {
             log.warn("Failed to parse storyboard response", e);
             return List.of(Map.of(

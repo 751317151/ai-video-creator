@@ -1,0 +1,16 @@
+.env
+.secret_key
+__pycache__/
+*.pyc
+*.pyo
+output/
+data/
+*.mp4
+*.mp3
+*.wav
+.DS_Store
+venv/
+.venv/
+*.egg-info/
+dist/
+build/

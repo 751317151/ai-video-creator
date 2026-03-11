@@ -27,11 +27,12 @@ spring:
   # Spring AI (DeepSeek via OpenAI-compatible)
   ai:
     openai:
-      api-key: ${LLM_API_KEY:sk-placeholder}
-      base-url: ${LLM_BASE_URL:https://api.deepseek.com}
+#      api-key: ${LLM_API_KEY:sk-placeholder}
+      api-key: ${aliQwen_api}
+      base-url: ${LLM_BASE_URL:https://dashscope.aliyuncs.com/compatible-mode}
       chat:
         options:
-          model: ${LLM_MODEL:deepseek-chat}
+          model: ${LLM_MODEL:qwen3-omni-flash}
           temperature: 0.7
     vectorstore:
       pgvector:
@@ -78,6 +79,7 @@ management:
 # Application
 avc:
   api-key: ${AVC_API_KEY:blackstar}
+  pexels-api-key: ${PEXELS_API_KEY:qG0VThuKLFV2b5wjhUJO0ym6UOIzBnRA7FaimlR1OUkn5Iar6Lw9peDy}
   rate-limit:
     max-requests: 60
     window-seconds: 60

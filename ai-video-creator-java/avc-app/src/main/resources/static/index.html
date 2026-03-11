@@ -3019,11 +3019,29 @@ async function previewScript() {
     const extraReq = document.getElementById('extraReq').value || '';
     const genUrl = `/api/scripts/generate?topic=${encodeURIComponent(topic)}&videoType=${encodeURIComponent(currentType)}&extraRequirements=${encodeURIComponent(extraReq)}`;
     const resp = await apiFetch(genUrl, { method: 'POST' });
-    const data = await resp.json();
-    if (data.error) throw new Error(data.error);
+    const apiResp = await resp.json();
+    if (apiResp.error) throw new Error(apiResp.error);
 
-    currentScriptData = data;
-    renderScriptPreview(data);
+    // data is a JSON string from AI, parse it (strip markdown code fences if present)
+    let raw = apiResp.data || '';
+    raw = raw.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
+    const parsed = JSON.parse(raw);
+
+    // Map AI format (scenes) to frontend format (segments)
+    const script = {
+      title: parsed.title || '',
+      segments: (parsed.scenes || parsed.segments || []).map(s => ({
+        text: s.narration || s.text || '',
+        image_keyword: s.visualHint || s.image_keyword || '',
+      })),
+      call_to_action: parsed.call_to_action || '',
+      tags: parsed.tags || [],
+      hook: parsed.hook || '',
+      duration_estimate: parsed.totalDurationSeconds || parsed.duration_estimate || 60,
+    };
+
+    currentScriptData = script;
+    renderScriptPreview(script);
     document.getElementById('scriptPreview').style.display = 'block';
     document.getElementById('storyboardPreview').style.display = 'none';
     toast('脚本生成成功', 'success');
@@ -3127,16 +3145,27 @@ async function generateStoryboard() {
     const storyUrl = `/api/scripts/storyboard?topic=${encodeURIComponent(storyTopic)}&scriptJson=${encodeURIComponent(storyScriptJson)}&sceneCount=${script.segments.length}`;
 
     const resp = await apiFetch(storyUrl, { method: 'POST' });
-    const data = await resp.json();
-    if (data.error) throw new Error(data.error);
+    const apiResp = await resp.json();
+    if (apiResp.error) throw new Error(apiResp.error);
 
+    const scenes = apiResp.data || [];
     const grid = document.getElementById('storyboardGrid');
-    if (data.segments && data.segments.length) {
-      grid.innerHTML = data.segments.map(s =>
-        `<img src="${s.url}" alt="Scene ${s.index + 1}" title="场景 ${s.index + 1}">`
-      ).join('');
-    } else if (data.storyboard_url) {
-      grid.innerHTML = `<img src="${data.storyboard_url}" alt="Storyboard">`;
+    if (scenes.length) {
+      grid.innerHTML = scenes.map((s, i) => {
+        const num = s.sceneNumber || i + 1;
+        const imgHtml = s.imageUrl
+          ? `<img src="${s.imageUrl}" alt="Scene ${num}" style="width:100%;border-radius:6px;margin-bottom:0.5rem;aspect-ratio:16/9;object-fit:cover;">`
+          : `<div style="width:100%;aspect-ratio:16/9;background:linear-gradient(135deg,var(--surface),var(--card));border-radius:6px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:0.75rem;margin-bottom:0.5rem;">No image</div>`;
+        return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:0.6rem;position:relative;">
+          <span style="position:absolute;top:0.3rem;right:0.5rem;font-size:0.7rem;color:var(--muted);">#${num}</span>
+          ${imgHtml}
+          <div style="font-size:0.78rem;font-weight:600;margin-bottom:0.3rem;">${s.description || ''}</div>
+          <div style="font-size:0.72rem;color:var(--muted);">${s.narration || ''}</div>
+          <div style="font-size:0.68rem;color:var(--accent2);margin-top:0.2rem;">${s.durationSeconds || 0}s</div>
+        </div>`;
+      }).join('');
+    } else {
+      grid.innerHTML = '<div style="color:var(--muted);font-size:0.85rem;">未生成故事板内容</div>';
     }
     document.getElementById('storyboardPreview').style.display = 'block';
     toast('故事板生成成功', 'success');
